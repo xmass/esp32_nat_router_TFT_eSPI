@@ -50,7 +50,7 @@ static esp_err_t index_get_handler(httpd_req_t *req)
      * extra byte for null termination */
     buf_len = httpd_req_get_hdr_value_len(req, "Host") + 1;
     if (buf_len > 1) {
-        buf = malloc(buf_len);
+        buf = (char*)malloc(buf_len);
         /* Copy null terminated value string into buffer */
         if (httpd_req_get_hdr_value_str(req, "Host", buf, buf_len) == ESP_OK) {
             ESP_LOGI(TAG, "Found header => Host: %s", buf);
@@ -62,7 +62,7 @@ static esp_err_t index_get_handler(httpd_req_t *req)
      * extra byte for null termination */
     buf_len = httpd_req_get_url_query_len(req) + 1;
     if (buf_len > 1) {
-        buf = malloc(buf_len);
+        buf = (char*)malloc(buf_len);
         if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
             ESP_LOGI(TAG, "Found URL query => %s", buf);
             if (strcmp(buf, "reset=Reboot") == 0) {
@@ -181,7 +181,7 @@ char* html_escape(const char* src) {
         }
     }
 
-    char* res = malloc(sizeof(char) * esc_len);
+    char* res = (char*)malloc(sizeof(char) * esc_len);
 
     int j = 0;
     for (int i = 0; i < len; i++) {
@@ -224,7 +224,7 @@ httpd_handle_t start_webserver(void)
         strlen(safe_ent_username) +
         strlen(safe_ent_identity) +
         256;
-    char* config_page = malloc(sizeof(char) * page_len);
+    char* config_page = (char*)malloc(sizeof(char) * page_len);
 
     snprintf(
         config_page, page_len, config_page_template,

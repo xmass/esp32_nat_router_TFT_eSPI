@@ -40,7 +40,7 @@
 #include "router_globals.h"
 
 // On board LED
-#define BLINK_GPIO 2
+//#define BLINK_GPIO 2
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t wifi_event_group;
@@ -89,8 +89,8 @@ static void initialize_filesystem(void)
 {
     static wl_handle_t wl_handle;
     const esp_vfs_fat_mount_config_t mount_config = {
+            .format_if_mount_failed = true,
             .max_files = 4,
-            .format_if_mount_failed = true
     };
     esp_err_t err = esp_vfs_fat_spiflash_mount(MOUNT_PATH, "storage", &mount_config, &wl_handle);
     if (err != ESP_OK) {
@@ -265,8 +265,8 @@ static void initialize_console(void)
 
     /* Initialize the console */
     esp_console_config_t console_config = {
-            .max_cmdline_args = 8,
             .max_cmdline_length = 256,
+            .max_cmdline_args = 8,
 #if CONFIG_LOG_COLORS
             .hint_color = atoi(LOG_COLOR_CYAN)
 #endif
@@ -294,12 +294,12 @@ static void initialize_console(void)
 
 void * led_status_thread(void * p)
 {
-    gpio_reset_pin(BLINK_GPIO);
-    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+//    gpio_reset_pin(BLINK_GPIO);
+//    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
 
     while (true)
     {
-        gpio_set_level(BLINK_GPIO, ap_connect);
+/*        gpio_set_level(BLINK_GPIO, ap_connect);
 
         for (int i = 0; i < connect_count; i++)
         {
@@ -308,7 +308,7 @@ void * led_status_thread(void * p)
             gpio_set_level(BLINK_GPIO, ap_connect);
             vTaskDelay(50 / portTICK_PERIOD_MS);
         }
-
+*/
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
@@ -441,7 +441,8 @@ void wifi_init(const char* ssid, const char* ent_username, const char* ent_ident
             ESP_LOGI(TAG, "STA regular connection");
             strlcpy((char*)wifi_config.sta.password, passwd, sizeof(wifi_config.sta.password));
         }
-        ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
+        //ESP_ERROR_CHECK(
+            esp_wifi_set_config(wifi_interface_t::WIFI_IF_STA, &wifi_config);// );
         if(strlen(ent_username) != 0 && strlen(ent_identity) != 0) {
             ESP_LOGI(TAG, "STA enterprise connection");
             if(strlen(ent_username) != 0 && strlen(ent_identity) != 0) {
@@ -454,10 +455,10 @@ void wifi_init(const char* ssid, const char* ent_username, const char* ent_ident
             esp_wifi_sta_wpa2_ent_enable();
         }
 
-        ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config) );
+        ESP_ERROR_CHECK(esp_wifi_set_config(wifi_interface_t::WIFI_IF_AP, &ap_config) );
     } else {
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP) );
-        ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config) );        
+        ESP_ERROR_CHECK(esp_wifi_set_config(wifi_interface_t::WIFI_IF_AP, &ap_config) );        
     }
 
     // Enable DNS (offer) for dhcp server
@@ -496,13 +497,67 @@ char* ap_passwd = NULL;
 char* ap_ip = NULL;
 
 char* param_set_default(const char* def_val) {
-    char * retval = malloc(strlen(def_val)+1);
+    char * retval = (char*)malloc(strlen(def_val)+1);
     strcpy(retval, def_val);
     return retval;
 }
 
+#include <TFT_eSPI.h> // Hardware-specific library
+#include <SPI.h>
+
+TFT_eSPI tft = TFT_eSPI();       // Invoke custom library
+
+void test_tft()
+{
+    // Fill screen with grey so we can see the effect of printing with and without 
+  // a background colour defined
+  tft.fillScreen(TFT_BLACK);
+  
+  // Set "cursor" at top left corner of display (0,0) and select font 2
+  // (cursor will move to next line automatically during printing with 'tft.println'
+  //  or stay on the line is there is room for the text with tft.print)
+  tft.setCursor(0, 0, 2);
+  // Set the font colour to be white with a black background, set text size multiplier to 1
+  tft.setTextColor(TFT_WHITE,TFT_BLACK);  tft.setTextSize(1);
+  // We can now plot text on screen using the "print" class
+  tft.println("Hello World!");
+  
+  // Set the font colour to be yellow with no background, set to font 7
+  tft.setTextColor(TFT_YELLOW); tft.setTextFont(2);
+  tft.println(1234.56);
+  
+  // Set the font colour to be red with black background, set to font 4
+  tft.setTextColor(TFT_RED,TFT_BLACK);    tft.setTextFont(4);
+  tft.println((long)3735928559, HEX); // Should print DEADBEEF
+
+  // Set the font colour to be green with black background, set to font 2
+  tft.setTextColor(TFT_GREEN,TFT_BLACK);
+  tft.setTextFont(2);
+  tft.println("Groop");
+
+  // Test some print formatting functions
+  float fnumber = 123.45;
+   // Set the font colour to be blue with no background, set to font 2
+  tft.setTextColor(TFT_BLUE);    tft.setTextFont(2);
+  tft.print("Float = "); tft.println(fnumber);           // Print floating point number
+  tft.print("Binary = "); tft.println((int)fnumber, BIN); // Print as integer value in binary
+  tft.print("Hexadecimal = "); tft.println((int)fnumber, HEX); // Print as integer number in Hexadecimal
+
+}
+
+#ifdef __cplusplus
+extern "C"
+#endif
 void app_main(void)
 {
+
+  tft.init();
+  // Turn display off
+  digitalWrite(TFT_BL,LOW); // Should force backlight off
+  tft.writecommand(ST7789_DISPOFF);// Switch off the display
+  tft.writecommand(ST7789_SLPIN);// Sleep the display driver 
+  // test_tft();
+
     initialize_nvs();
 
 #if CONFIG_STORE_HISTORY
